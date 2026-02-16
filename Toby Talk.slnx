@@ -1,0 +1,18 @@
+﻿<Solution>
+  <Project Path="Zenject.csproj" />
+  <Project Path="UniRx.csproj" />
+  <Project Path="Zenject-IntegrationTests-Editor.csproj" />
+  <Project Path="Zenject-ReflectionBaking-Editor.csproj" />
+  <Project Path="Lofelt.NiceVibrations.Demo.csproj" />
+  <Project Path="Zenject-UnitTests-Editor.csproj" />
+  <Project Path="Zenject-Editor.csproj" />
+  <Project Path="Zenject-IntegrationTests.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="UniRx.Examples.csproj" />
+  <Project Path="Lofelt.NiceVibrations.Editor.csproj" />
+  <Project Path="Zenject-TestFramework.csproj" />
+  <Project Path="Lofelt.NiceVibrations.csproj" />
+  <Project Path="Assembly-CSharp-firstpass.csproj" />
+  <Project Path="Zenject-PoolMonitor-Editor.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
+</Solution>
