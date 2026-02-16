@@ -1,16 +1,16 @@
-# Toby Talk — Architecture Guide
+# Unity Boilerplate — Architecture Guide
 
 ---
 
 ## 1. Overview
 
-Toby Talk is a Unity mobile game built on three pillars:
+Unity Boilerplate is a Unity mobile game built on three pillars:
 
 | Pillar | Tool | Role |
 |--------|------|------|
 | Dependency Injection | **Zenject** | Wires services, UI, and states together without singletons |
 | Reactive Data Binding | **UniRx** | Player data and UI auto-update via `ReactiveProperty<T>` |
-| Centralized Config | **AppConfig** (ScriptableObject) | All URLs, tokens, and secrets live in one Inspector-editable asset |
+| Centralized Config | **GameConfig** (ScriptableObject) | All URLs, tokens, and secrets live in one Inspector-editable asset |
 
 **Core rule:** Every service is accessed through an interface (`IPlayerService`, `IAudioService`, etc.) injected via Zenject's `[Inject]` attribute. There are no god objects, no `FindObjectOfType`, and no static service locators.
 
@@ -23,17 +23,16 @@ Assets/Scripts/
 │
 ├── Backend/                     ← Networking layer
 │   ├── _APIs/                   ← Static API classes (AuthAPI, MediaAPI, PlaylistAPI …)
-│   ├── _Models/                 ← Server data models
+│   ├── _Models/                 ← Server data models (Backend, Models, AiAudioModels …)
 │   ├── RequestDispatcher.cs     ← Executes HTTP via UnityWebRequest coroutines
 │   ├── RequestMessage.cs        ← Request builder (URL, headers, body)
 │   ├── ResponseMessage.cs       ← Typed response wrapper
-│   ├── TobyTalkClient.cs        ← Singleton dispatcher + response caching
-│   └── TobyTalkResponse.cs      ← Raw server response
+│   ├── GameClient.cs            ← Singleton dispatcher + response caching
+│   └── GameResponse.cs          ← Raw server response
 │
-├── CacheManagers/               ← API response caching (session / persistent)
-├── Editor/                      ← Editor-only tools (AppConfigCreator)
+├── CacheManagers/               ← API / audio / image / video caching (session / persistent)
+├── Editor/                      ← Editor-only tools (GameConfigCreator)
 ├── Extensions/                  ← C# extension methods
-├── Extras/                      ← Serialization (AppSerializer)
 │
 ├── Gameplay/
 │   └── Managers/
@@ -42,13 +41,16 @@ Assets/Scripts/
 ├── Installers/                  ← Zenject installers
 │   ├── ProjectInstaller.cs      ← Root bindings (all services, UI, signals)
 │   ├── GameSceneInstaller.cs    ← Game-scene bindings
-│   └── MainSceneInstaller.cs    ← Main-scene bindings
+│   ├── MainSceneInstaller.cs    ← Main-scene bindings
+│   └── GameDifficultyInstaller.cs ← Difficulty settings
 │
 ├── Models/                      ← Data models (Player, Difficulty)
 │
 ├── Scriptables/                 ← ScriptableObjects
-│   ├── AppConfig.cs             ← Tokens, URLs, version — the "env file"
-│   └── GameElements.cs          ← Prefab registry for services & UI
+│   ├── GameConfig.cs            ← Tokens, URLs, version — the "env file"
+│   ├── GameElements.cs          ← Prefab registry for services & UI
+│   ├── GameSceneElements.cs     ← Game-scene prefab references
+│   └── MainSceneElements.cs     ← Main-scene prefab references
 │
 ├── Services/                    ← All game services
 │   ├── Interfaces/              ← 12 service interfaces
@@ -64,6 +66,8 @@ Assets/Scripts/
 │   ├── VibrationService.cs      ← Haptic feedback
 │   ├── EffectService.cs         ← Particle effects
 │   ├── ApiService.cs            ← Server API orchestration
+│   ├── ColorService.cs          ← Color/theme management
+│   ├── UserService.cs           ← User-related logic
 │   └── Services.cs              ← AppInitializer (bootstrap only)
 │
 ├── Signals/                     ← Zenject signals (decoupled events)
@@ -79,9 +83,9 @@ Assets/Scripts/
 │
 ├── UI/
 │   ├── Screens/                 ← Full-screen views (Splash, Home, GamePlay)
-│   └── Popups/                  ← Modals (Settings, Pause, Win, Lose, Fail, Profile)
+│   └── Popup/                   ← Modals (Settings, Pause, Win, Lose, Fail, Profile, Common)
 │
-└── Utils/                       ← Helpers (GameMonoBehaviour, CameraShake, SafeArea …)
+└── Utils/                       ← Helpers (GameMonoBehaviour, GameSerializer, CameraShake, SafeArea …)
 ```
 
 ---
@@ -127,7 +131,7 @@ Container.BindInterfacesAndSelfTo<InputService>()
 ### 3.4 What Gets Bound
 
 ```
-AppConfig              ← singleton ScriptableObject (tokens, URLs)
+GameConfig             ← singleton ScriptableObject (tokens, URLs)
 GameElements           ← singleton ScriptableObject (prefab registry)
 
 IPlayerService         → PlayerService          (NonLazy)
@@ -149,6 +153,9 @@ UiOrganizer            ← plain class
 
 SplashScreen, HomeScreen, GamePlayScreen         ← lazy, from prefab
 CommonPopup, GameFailPopup, GameWinPopup, etc.   ← lazy, from prefab
+
+ColorService           ← color/theme management
+UserService            ← user-related logic
 
 ScoreUpdateSignal      ← Zenject signal
 ```
@@ -353,41 +360,41 @@ Popups follow the same steps, using the `Popups` enum and `ActivateUIPopups()`.
 
 ---
 
-## 8. AppConfig — Centralized Configuration
+## 8. GameConfig — Centralized Configuration
 
 All environment-specific values are stored in a **ScriptableObject** instead of being hardcoded in source files.
 
 ### 8.1 Asset Location
 
 ```
-Assets/Resources/Config/AppConfig.asset
+Assets/Resources/Config/GameConfig.asset
 ```
 
 ### 8.2 Fields
 
 | Field | Purpose | Read By |
 |-------|---------|---------|
-| `hostUrl` | Main REST API base URL | `TobyTalkClient`, all API classes |
-| `hostAudioUrl` | Audio/Speech API base URL | `TobyTalkClient` |
-| `cloudfrontUrl` | CloudFront CDN base URL | `TobyTalkClient` |
-| `appToken` | `X-App-Token` header for authenticated calls | API classes via `TobyTalkClient.AppToken` |
+| `hostUrl` | Main REST API base URL | `GameClient`, all API classes |
+| `hostAudioUrl` | Audio/Speech API base URL | `GameClient` |
+| `cloudfrontUrl` | CloudFront CDN base URL | `GameClient` |
+| `appToken` | `X-App-Token` header for authenticated calls | API classes via `GameClient.AppToken` |
 | `defaultRequestAppToken` | Default `X-App-Token` on every request | `RequestMessage._defaultHeaders` |
-| `appVersionCode` | `X-Forwarded-Version` header | `RequestMessage._defaultHeaders` |
+| `gameVersionCode` | `X-Forwarded-Version` header | `RequestMessage._defaultHeaders` |
 
 ### 8.3 Creating the Asset (First Time)
 
-In Unity → **Tools → Create AppConfig Asset**
+In Unity → **Tools → Create GameConfig Asset**
 
-Or: **Assets → Create → ScriptableObjects → AppConfig**, then move to `Resources/Config/`.
+Or: **Assets → Create → ScriptableObjects → GameConfig**, then move to `Resources/Config/`.
 
 ### 8.4 Accessing in Code
 
 ```csharp
 // Static accessor (works anywhere)
-string url = AppConfig.Instance.hostUrl;
+string url = GameConfig.Instance.hostUrl;
 
 // Or inject via Zenject (preferred in services)
-[Inject] private AppConfig _config;
+[Inject] private GameConfig _config;
 ```
 
 ### 8.5 Keeping Secrets Out of Git
@@ -395,8 +402,8 @@ string url = AppConfig.Instance.hostUrl;
 Add to `.gitignore`:
 
 ```
-Assets/Resources/Config/AppConfig.asset
-Assets/Resources/Config/AppConfig.asset.meta
+Assets/Resources/Config/GameConfig.asset
+Assets/Resources/Config/GameConfig.asset.meta
 ```
 
 Check in a template with placeholder values for teammates.
@@ -408,10 +415,10 @@ Check in a template with placeholder values for teammates.
 ### 9.1 Request Flow
 
 ```
-Static API class         TobyTalkClient              RequestDispatcher
+Static API class         GameClient                  RequestDispatcher
 (AuthAPI, MediaAPI)  →   (cache check, dispatch)  →  (UnityWebRequest coroutine)
                                                            ↓
-callback ← ResponseMessage<T> ← TobyTalkResponse ← HTTP response
+callback ← ResponseMessage<T> ← GameResponse ← HTTP response
 ```
 
 ### 9.2 Making an API Call
@@ -434,8 +441,8 @@ AuthAPI.Login("user@email.com", "password", response =>
 
 ### 9.3 Authentication Flow
 
-1. **App token** — automatically injected into every request header via `RequestMessage._defaultHeaders` (read from `AppConfig`).
-2. **User bearer token** — API classes read `TobyTalkClient.instance.AccessToken`. This is kept in sync automatically: when you set `PlayerService.AccessToken`, it writes to `TobyTalkClient.AccessToken` too.
+1. **App token** — automatically injected into every request header via `RequestMessage._defaultHeaders` (read from `GameConfig`).
+2. **User bearer token** — API classes read `GameClient.instance.AccessToken`. This is kept in sync automatically: when you set `PlayerService.AccessToken`, it writes to `GameClient.AccessToken` too.
 
 ### 9.4 Adding a New API Endpoint
 
@@ -451,14 +458,14 @@ namespace Backend
         private static void AddAuth(RequestMessage req)
         {
             req._headers = RequestMessage._defaultHeaders;
-            req._headers.Add("X-APP-Token", TobyTalkClient.instance.AppToken);
-            if (!string.IsNullOrEmpty(TobyTalkClient.instance.AccessToken))
-                req._headers.Add("Authorization", "Bearer " + TobyTalkClient.instance.AccessToken);
+            req._headers.Add("X-APP-Token", GameClient.instance.AppToken);
+            if (!string.IsNullOrEmpty(GameClient.instance.AccessToken))
+                req._headers.Add("Authorization", "Bearer " + GameClient.instance.AccessToken);
         }
 
         public static void GetItem(string id, Action<ResponseMessage<ItemResponse>> listener)
         {
-            string url = TobyTalkClient.instance._hostUrl + $"api/v1/items/{id}/";
+            string url = GameClient.instance._hostUrl + $"api/v1/items/{id}/";
             var req = new RequestMessage
             {
                 _requestType = RequestMessage.RequestType.GET,
@@ -466,7 +473,7 @@ namespace Backend
                 _requestPath = url
             };
             AddAuth(req);
-            TobyTalkClient.instance.DispatchRequest(req, listener);
+            GameClient.instance.DispatchRequest(req, listener);
         }
     }
 }
@@ -627,12 +634,12 @@ enum UIType    { Screen, Popup }
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| `AppConfig asset not found` | Asset doesn't exist yet | Unity → **Tools → Create AppConfig Asset** |
+| `GameConfig asset not found` | Asset doesn't exist yet | Unity → **Tools → Create GameConfig Asset** |
 | `ZenjectException: Unable to resolve IMyService` | Not bound in installer | Add binding in `ProjectInstaller.cs` |
 | `[Inject] field is null` | Object created outside Zenject | Bind it in installer, or add `ZenjectBinding` component, or call `Container.InjectGameObject()` |
 | Buttons don't work on a screen | Injection not happening | Make sure the prefab is bound in `ProjectInstaller.cs` and accessed through `IUIService` |
 | Player data not saving | File system issue | Check `Application.persistentDataPath` is writable; data file is `player_data.json` |
-| API calls fail with 401 | Token not set | Ensure `PlayerService.AccessToken` is set after login (it syncs to `TobyTalkClient` automatically) |
+| API calls fail with 401 | Token not set | Ensure `PlayerService.AccessToken` is set after login (it syncs to `GameClient` automatically) |
 
 ---
 

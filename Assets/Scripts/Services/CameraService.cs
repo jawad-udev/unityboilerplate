@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using DG.Tweening;
 using Zenject;
 
 public class CameraService : ICameraService
@@ -9,12 +10,12 @@ public class CameraService : ICameraService
     public float ZoomOutLimit => _zoomOutLimit;
     public float ZoomInLimit => _zoomInLimit;
     public float ZoomSpeed => zoomSpeed;
-    public iTween.EaseType EaseType => easeType;
+    public Ease EaseType => easeType;
 
     public float _zoomOutLimit = 50f;
     public float _zoomInLimit = 30f;
     public float zoomSpeed = 1f;
-    public iTween.EaseType easeType = iTween.EaseType.easeInOutSine;
+    public Ease easeType = Ease.InOutSine;
 
     public Camera AssignPlayerCamera(GameplayOwner owner)
     {

@@ -1,12 +1,13 @@
 using System;
 using UnityEngine;
+using DG.Tweening;
 
 public interface ICameraService
 {
     float ZoomOutLimit { get; }
     float ZoomInLimit { get; }
     float ZoomSpeed { get; }
-    iTween.EaseType EaseType { get; }
+    Ease EaseType { get; }
 
     Camera AssignPlayerCamera(GameplayOwner owner);
     Camera AssignPlayerCamera(GameManager gameplayManager);
