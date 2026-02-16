@@ -1,14 +1,18 @@
 using UnityEngine;
 using System;
 using DG.Tweening;
-using Zenject;
 
 public class CameraZoom : MonoBehaviour
 {
-    [Inject] private ICameraService _cameraService;
+    private ICameraService _cameraService;
 
     private Tween _currentTween;
     public Camera mainCamera;
+
+    public void Init(ICameraService cameraService)
+    {
+        _cameraService = cameraService;
+    }
 
     public void ZoomIn(Action zoomListener = null)
     {

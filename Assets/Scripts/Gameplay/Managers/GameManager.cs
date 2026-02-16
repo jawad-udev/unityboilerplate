@@ -33,6 +33,7 @@ public class GameManager : MonoBehaviour
         gameplayCamera.orthographicSize = _cameraService.ZoomOutLimit;
         cameraShake = gameplayCamera.GetComponent<CameraShake>();
         cameraZoom = gameplayCamera.GetComponent<CameraZoom>();
+        cameraZoom.Init(_cameraService);
         ZoomIn();
 
         totalLifes.Subscribe(x =>
